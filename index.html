@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<title>DeutschWort</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6fa;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+header{background:#2563eb;color:white;padding:28px 18px;border-radius:0 0 25px 25px}
+header h1{margin:0;font-size:30px}header p{margin:5px 0 0;opacity:.9}
+main{max-width:650px;margin:auto;padding:18px 15px 90px}.btn{width:100%;padding:15px;border:0;border-radius:14px;font-size:17px;font-weight:700;margin:7px 0;cursor:pointer}.blue{background:#2563eb;color:white}.white{background:white;border:1px solid #ddd}.card{background:white;border-radius:20px;padding:18px;box-shadow:0 4px 18px #0000000b;margin-top:16px}
+input{width:100%;padding:14px;border:1px solid #d5d9e0;border-radius:12px;font-size:17px;margin:6px 0 12px}
+label{font-weight:700;display:block;margin-top:10px}.photo{height:220px;background:#e7ecf5;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:90px;margin-bottom:15px;overflow:hidden}.photo img{width:100%;height:100%;object-fit:cover}
+.german{font-size:31px;font-weight:800}.arabic{font-size:20px;color:#667085;margin-top:5px}.sentence{border-top:1px solid #eee;margin-top:16px;padding-top:15px;font-size:17px;line-height:1.6}
+.speak{border:0;background:#eef4ff;border-radius:50%;width:42px;height:42px;font-size:19px}.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.rating{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}.rating button{padding:13px 5px;border-radius:12px;border:1px solid #ddd;background:white;font-weight:700}
+.small{color:#667085;font-size:14px}.empty{text-align:center;padding:35px 15px;color:#667085}
+.listitem{background:white;border-radius:14px;padding:14px;margin:8px 0;display:flex;justify-content:space-between;align-items:center}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header><h1>DeutschWort 🇩🇪</h1><p>كلمة، صورة، جملة، ونطق — ببساطة</p></header>
+<main id="app"></main>
+
+<script>
+const KEY="deutschwort.simple.v1";
+let words=JSON.parse(localStorage.getItem(KEY)||"[]");
+let page="home", current=null;
+
+function save(){localStorage.setItem(KEY,JSON.stringify(words))}
+function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function speak(t){if(!window.speechSynthesis)return; speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang="de-DE";u.rate=.78;speechSynthesis.speak(u)}
+function showHome(){
+page="home";
+document.getElementById("app").innerHTML=`
+<button class="btn blue" onclick="showAdd()">➕ إضافة كلمة</button>
+<button class="btn white" onclick="startReview()">🧠 مراجعة الكلمات</button>
+<div class="card">
+<h2>كلماتي</h2>
+<p class="small">عدد الكلمات: ${words.length}</p>
+${words.length?words.slice(0,8).map(w=>`<div class="listitem"><div><b>${esc(w.g)}</b><br><span class="small">${esc(w.a)}</span></div><button class="speak" onclick="speak('${esc(w.g).replace(/'/g,"\\'")}')">🔊</button></div>`).join(""):`<div class="empty">لم تضف كلمات بعد.<br>ابدأ بكلمة واحدة.</div>`}
+</div>`;
+}
+function showAdd(){
+page="add";
+document.getElementById("app").innerHTML=`
+<button class="btn white" onclick="showHome()">← رجوع</button>
+<div class="card">
+<h2>إضافة كلمة</h2>
+<label>الكلمة بالألماني</label>
+<input id="g" placeholder="مثال: der Tisch">
+<label>المعنى بالعربي</label>
+<input id="a" placeholder="مثال: الطاولة">
+<label>جملة بالألماني <span class="small">(اختياري)</span></label>
+<input id="s" placeholder="مثال: Der Tisch ist groß.">
+<label>ترجمة الجملة <span class="small">(اختياري)</span></label>
+<input id="sa" placeholder="الطاولة كبيرة.">
+<label>صورة <span class="small">(اختياري: رابط صورة)</span></label>
+<input id="im" placeholder="https://...">
+<button class="btn blue" onclick="add()">حفظ</button>
+</div>`;
+}
+function add(){
+let g=document.getElementById("g").value.trim(),a=document.getElementById("a").value.trim();
+if(!g||!a){alert("اكتب الكلمة والمعنى");return}
+words.unshift({id:Date.now(),g,a,s:document.getElementById("s").value.trim(),sa:document.getElementById("sa").value.trim(),im:document.getElementById("im").value.trim(),score:0});
+save();showHome();
+}
+function startReview(){
+if(!words.length){showAdd();return}
+current=0;review();
+}
+function review(){
+if(current===null)return;
+if(current>=words.length){document.getElementById("app").innerHTML=`<div class="card empty"><h2>👏 أحسنت!</h2><p>انتهت المراجعة.</p><button class="btn blue" onclick="showHome()">العودة للرئيسية</button></div>`;return}
+let w=words[current];
+document.getElementById("app").innerHTML=`
+<div class="small" style="text-align:center">${current+1} / ${words.length}</div>
+<div class="card">
+<div class="photo">${w.im?`<img src="${esc(w.im)}" onerror="this.parentElement.innerHTML='🖼️'">`:"🖼️"}</div>
+<div class="row"><div class="german">${esc(w.g)}</div><button class="speak" onclick="speak('${esc(w.g).replace(/'/g,"\\'")}')">🔊</button></div>
+<p class="small">حاول تذكر المعنى قبل الضغط على الزر</p>
+<button class="btn blue" onclick="reveal()">👁️ إظهار المعنى</button><div id="answer"></div>
+</div>`;
+}
+function reveal(){
+let w=words[current];
+document.getElementById("answer").innerHTML=`
+<div class="arabic">${esc(w.a)}</div>
+${w.s?`<div class="sentence"><div class="row"><b>${esc(w.s)}</b><button class="speak" onclick="speak('${esc(w.s).replace(/'/g,"\\'")}')">🔊</button></div><div class="small">${esc(w.sa)}</div></div>`:""}
+<h3>كيف تذكرتها؟</h3>
+<div class="rating">
+<button onclick="rate(-1)">🔴 ما تذكرتها</button>
+<button onclick="rate(0)">🟡 صعبة</button>
+<button onclick="rate(1)">🟢 تذكرتها</button>
+</div>`;
+}
+function rate(v){
+words[current].score=(words[current].score||0)+v;
+save();current++;review();
+}
+document.getElementById("app").addEventListener("click",e=>{});
+showHome();
+</script>
+</body>
+</html>
